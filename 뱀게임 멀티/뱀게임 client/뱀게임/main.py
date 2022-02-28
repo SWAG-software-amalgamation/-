@@ -11,24 +11,25 @@ from socket import *
 
 class data_socket_client:
     clientSock = socket(AF_INET, SOCK_STREAM)
-    clientSock.connect(('127.0.0.1', 8080))
+    clientSock.connect(('25.29.175.241', 8080))
     print('연결에 성공했습니다.')
 
     def output(self, q):
         a = q
+        
         b = ''
         data = []
         for i in range(len(a)):
             data.append(','.join(list(map(str, a[i]))) + ':') 
         for i in range(len(data)):
                 b += data[i]
-                
+                      
         self.clientSock.send(b.encode('utf-8'))
         
     def input(self):
         data = self.clientSock.recv(1024)
         data = data.decode('utf-8')
-        data = data.split("^")
+        data = data.split("-")
         a,b = data[0].split(":"),data[1].split(":")
         a_list, b_list = [], []
         
@@ -36,11 +37,18 @@ class data_socket_client:
             a_list.append(list(map(int, a[i].split(','))))
         for i in range(len(b) -1 ):
             b_list.append(list(map(int, b[i].split(','))))
-            
+        
         return a_list,b_list
 
 client = data_socket_client()
 
+def score_update(N):
+   M = list(map(int, open("./score.txt", 'r').readlines() + [f'{N}\n']))
+   M.sort()
+   M.reverse()
+   M = list(map(str, M))
+   open('./score.txt','w').write('\n'.join(M[:-1]))
+    
 #뱀게임
 SCREEN_WIDTH = 800       # 게임 화면의 너비
 SCREEN_HEIGHT = 800
@@ -64,7 +72,9 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 def draw_background(screen):
    """게임의 배경을 그린다."""
+   #background = pygame.Rect((0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT))
    background_image = pygame.image.load('game_background.png')
+   #pygame.draw.rect(screen, WHITE, background_image)
    screen.blit(background_image, (0, 0))
 
 def draw_block(screen, color, position):
@@ -105,7 +115,10 @@ draw_snake2p(screen, TEXTCOLOR, [24, 23])
 draw_snake2p(screen, TEXTCOLOR, [24, 25])
 draw_snake2p(screen, TEXTCOLOR, [24, 26])
 
+
 block_position = [0, 0]  # 블록의 위치 [y, x]
+
+
 last_moved_time = datetime.now()  # 마지막으로 블록을 움직인 때
 
 # 방향키 입력에 따라 바꿀 블록의 방향
@@ -117,10 +130,12 @@ DIRECTION_ON_KEY = {
 }
 dicSnakeDirection = {'north':'south','south':'north','west':'east','east':'west'}
 
+
 class Snake:
    """뱀 클래스"""
    color = GREEN  # 뱀의 색
-   
+
+
    def __init__(self):
        self.positions = [[27, 9], [28, 9], [29, 9], [30, 9]]  # 뱀의 위치
        self.direction = 'north'  # 뱀의 방향
@@ -133,7 +148,7 @@ class Snake:
        color = randomR, randomG, randomB
        for position in self.positions:  # 뱀의 몸 블록들을 순회하며
            
-            draw_snake2p(screen, (0,0,0), position)  # 각 블록을 그린다
+            draw_snake2p(screen, (0,0,255), position)  # 각 블록을 그린다
             draw_snake2p(screen, ORANGE, self.positions[0])
                       
    def crawl(self, add):
@@ -155,8 +170,21 @@ class Snake:
        """뱀의 방향을 바꾼다."""
        if self.direction != dicSnakeDirection[DIRECTION_ON_KEY[event.key]]:
            self.direction = direction
-     
         
+   def grow(self):
+       """뱀이 한 칸 자라나게 한다."""
+       tail_position = self.positions[-1]
+       x, y = -1, -1
+       self.positions.append([x, y]) 
+        
+   def ungrow(self):#뱀이 한 칸 줄어들게 한다.
+       if len(self.positions) >= 2:
+           del self.positions[-1]
+
+   def growClear(self):#뱀을 한 칸만 남겨둔다.
+       if len(self.positions) >= 2:
+           del self.positions[0:-1]
+
 class Snake2p:
    """뱀 클래스"""
    color = GREEN  # 뱀의 색
@@ -191,11 +219,16 @@ class Snake2p:
        """뱀의 방향을 바꾼다."""
        if self.direction != dicSnakeDirection[DIRECTION_ON_KEY[event.key]]:
            self.direction = direction
+        
    def grow(self):
        """뱀이 한 칸 자라나게 한다."""
        tail_position = self.positions[-1]
-       x, y = -1, -1
-       self.positions.append([x, y])
+       x, y = 100, 100
+       self.positions.append([x, y]) 
+
+   def growClear(self):#뱀을 한 칸만 남겨둔다.
+       if len(self.positions) >= 2:
+           del self.positions[0:-1]
 
 class Apple:
    """사과 클래스"""
@@ -236,9 +269,10 @@ class GameBoard:
        self.apple.draw(screen)  # 게임판 위의 사과를 그린다
        self.snake.draw(screen)  # 게임판 위의 뱀을 그린다
        self.snake2p.draw(screen)
-       self.draw_text(f'길이: {len(self.snake.positions)-4}',pygame.font.Font('NanumGothic.ttf', 20),screen,50,30,TEXTCOLOR)
-       self.draw_text(f'길이: {len(self.snake2p.positions)-4}',pygame.font.Font('NanumGothic.ttf', 20),screen,750,30,TEXTCOLOR)
-
+       self.draw_text(f'점수: {len(self.snake.positions)-4}',pygame.font.Font('NanumGothic.ttf', 20),screen,50,30,TEXTCOLOR)
+       self.draw_text(f'점수: {len(self.snake2p.positions)-4}',pygame.font.Font('NanumGothic.ttf', 20),screen,750,30,TEXTCOLOR)
+       
+        
    def process_turn(self):
        """게임을 한 차례 진행한다."""
        scorelog = []
@@ -248,9 +282,12 @@ class GameBoard:
            self.apple.position = applelog
            self.check = 0
        client.output(self.snake2p.positions)
+       #self.snake.crawl(snakelog)
        self.snake2p.crawl()
-
+       
+       
        if (self.snake.positions[0][0] < 0 or self.snake.positions[0][1] < 0) or (self.snake.positions[0][0] > 39 or self.snake.positions[0][1] > 39) or (self.snake2p.positions[0][0] < 0 or self.snake2p.positions[0][1] < 0) or (self.snake2p.positions[0][0] > 39 or self.snake2p.positions[0][1] > 39):
+           
            raise SnakeCollisionException()
        
        # 뱀의 머리가 뱀의 몸과 부딛혔으면
@@ -267,23 +304,28 @@ class GameBoard:
              raise SnakeCollisionException()
        for i in range(0,41):
           if self.snake.positions[0] == (i,40) or self.snake2p.positions[0] == (i,40):
+             
              raise SnakeCollisionException()  # 뱀 충돌 예외를 일으킨다
           if self.snake.positions[0] == (40,i) or self.snake2p.positions[0] == (40,i):
+             
              raise SnakeCollisionException()  
           if self.snake.positions[0] == (i,-40) or self.snake2p.positions[0] == (i,-40):
+             
              raise SnakeCollisionException()
+             
           if self.snake.positions[0] == (-40,i) or self.snake2p.positions[0] == (-40,i):
+             
              raise SnakeCollisionException()
           
        # 뱀의 머리와 사과가 닿았으면
        if (self.snake.positions[0][0] == self.apple.position[0][0]*2 or self.snake.positions[0][0] == self.apple.position[0][0]*2+1) and (self.snake.positions[0][1] == self.apple.position[0][1]*2 or self.snake.positions[0][1] == self.apple.position[0][1]*2+1):
-           #self.snake.grow()     # 뱀을 한 칸 자라게 한다
-           pass
+           self.snake.grow()     # 뱀을 한 칸 자라게 한다
 
        elif (self.snake2p.positions[0][0] == self.apple.position[0][0]*2 or self.snake2p.positions[0][0] == self.apple.position[0][0]*2+1) and (self.snake2p.positions[0][1] == self.apple.position[0][1]*2 or self.snake2p.positions[0][1] == self.apple.position[0][1]*2+1):
            if (self.check == 0):
                self.snake2p.grow()
                self.check = 1
+           
            
 timeChange = 0.1
 TURN_INTERVAL = timedelta(seconds=0.1)  # 게임 진행 간격을 정의한다
@@ -297,69 +339,16 @@ while True:
       if event.type == pygame.KEYDOWN:  # 화살표 키가 입력되면 뱀의 방향을 바꾼다
          if event.key in DIRECTION_ON_KEY:
             game_board.snake2p.turn(DIRECTION_ON_KEY[event.key])
-              
+         
+         
+               
    # 시간이 TURN_INTERVAL만큼 지날 때마다 게임을 한 차례씩 진행한다
    if TURN_INTERVAL < datetime.now() - last_turn_time:
        try:
            game_board.process_turn()
        except SnakeCollisionException:
-          snake = game_board.snake
-          snake2p = game_board.snake2p
-          client.output(game_board.snake2p.positions)
-          if (snake.positions[0][0] < 0 or snake.positions[0][1] < 0) or (snake.positions[0][0] > 39 or snake.positions[0][1] > 39):
-              open("./score.txt", 'w').write('4')
-              startfile('sd.py')
-          if (snake2p.positions[0][0] < 0 or snake2p.positions[0][1] < 0) or (snake2p.positions[0][0] > 39 or snake2p.positions[0][1] > 39):
-              open("./score.txt", 'w').write('3')
-              startfile('sd.py')
-
-       # 뱀의 머리가 뱀의 몸과 부딛혔으면
-          if snake.positions[0] in snake.positions[1:]:
-              open("./score.txt", 'w').write('2')
-              startfile('sd.py')
-          if snake2p.positions[0] in snake2p.positions[1:]:
-              open("./score.txt", 'w').write('1')
-              startfile('sd.py')
-              
-             # 뱀 충돌 예외를 일으킨다
-          for i in range(1,len(snake.positions)):
-             if snake2p.positions[0] == snake.positions[i]:
-                 open("./score.txt", 'w').write('1')
-                 startfile('sd.py')
-          for i in range(1, len(snake2p.positions)):
-             if snake.positions[0] == snake2p.positions[i]:
-                 open("./score.txt", 'w').write('2')
-                 startfile('sd.py')
-                
-          for i in range(0,41):
-             if snake.positions[0] == (i,40):
-                 open("./score.txt", 'w').write('4')
-                 startfile('sd.py')
-             if snake2p.positions[0] == (i,40):
-                 open("./score.txt", 'w').write('1')
-                 startfile('sd.py')
-             
-             if snake.positions[0] == (40,i):
-                 open("./score.txt", 'w').write('4')
-                 startfile('sd.py')
-             if snake2p.positions[0] == (40,i):
-                 open("./score.txt", 'w').write('1')
-                 startfile('sd.py')
-             
-             if snake.positions[0] == (i,-40):
-                 open("./score.txt", 'w').write('4')
-                 startfile('sd.py')
-             if snake2p.positions[0] == (i,-40):
-                 open("./score.txt", 'w').write('1')
-                 startfile('sd.py')
-             
-             if snake.positions[0] == (-40,i):
-                 open("./score.txt", 'w').write('4')
-                 startfile('sd.py')
-             if snake2p.positions[0] == (-40,i):
-                 open("./score.txt", 'w').write('1')
-                 startfile('sd.py')
-                 
+          score_update(len(game_board.snake.positions)-4)
+          startfile('read_leaderboard_pyqt.py')
           pygame.quit()
           sys.exit()
        last_turn_time = datetime.now()

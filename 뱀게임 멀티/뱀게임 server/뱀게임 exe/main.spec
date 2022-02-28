@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['D:\\Downloads\\python\\뱀게임 server\\뱀게임 exe'],
+             pathex=['D:\\Programming\\python\\뱀게임 exe'],
              binaries=[],
              datas=[],
              hiddenimports=[],
